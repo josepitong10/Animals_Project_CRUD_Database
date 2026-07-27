@@ -1,0 +1,20 @@
+SHOW DATABASES;
+USE <ojt-store>;
+
+CREATE TABLE IF NOT EXISTS animals (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    num_legs INT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO animals (id, name, num_legs) VALUES
+(1, 'Dog', 4),
+(2, 'Bird', 2),
+(3, 'Spider', 8),
+(4, 'Ant', 6),
+(5, 'Human', 2)
+ON DUPLICATE KEY UPDATE name = VALUES(name);
+
+SELECT * FROM animals;
