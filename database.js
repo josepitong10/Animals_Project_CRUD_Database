@@ -9,7 +9,7 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME,
 
   ssl: {
-    ca: fs.readFileSync(process.env.DB_CA_PATH)
+    ca: fs.readFileSync("./certs/isrgrootx1.pem")
   }
 });
 
