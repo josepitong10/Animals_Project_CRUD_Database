@@ -1,10 +1,13 @@
 require("dotenv").config();
 const express = require("express");
+const cors = require("cors");
 const { pool, formatAnimal } = require("./database");
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+app.use(cors());
 app.use(express.json());
+
 
 app.get("/", (request, response) => {
     response.json({
