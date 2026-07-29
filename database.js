@@ -17,4 +17,17 @@ const pool = mysql.createPool({
     }
 });
 
-module.exports = pool;
+function formatAnimal(row) {
+    return {
+        id: row.id,
+        name: row.name,
+        numLegs: row.num_legs,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+    };
+}
+
+module.exports = {
+    pool,
+    formatAnimal
+};
