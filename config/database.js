@@ -13,36 +13,23 @@ const memoryStore = {
 let useMemory = process.env.DB_USE_MEMORY === "true";
 
 const poolOptions = {
-    host: process.env.DB_HOST || process.env.DB_HOSTNAME || "127.0.0.1",
-    port: Number(process.env.DB_PORT || 4000),
-    user: process.env.DB_USER || "root",
-    password: process.env.DB_PASSWORD || "",
-    database: process.env.DB_NAME || "ojt_store",
+    host: process.env.DB_HOST,
+    port: Number(process.env.DB_PORT),
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
     waitForConnections: true,
     connectionLimit: 10
 };
 
-if (process.env.DATABASE_URL) {
-    try {
-        const databaseUrl = new URL(process.env.DATABASE_URL);
-        poolOptions.host = databaseUrl.hostname || poolOptions.host;
-        poolOptions.port = Number(databaseUrl.port || process.env.DB_PORT || 4000);
-        poolOptions.user = decodeURIComponent(databaseUrl.username || poolOptions.user);
-        poolOptions.password = decodeURIComponent(databaseUrl.password || poolOptions.password);
-        poolOptions.database = databaseUrl.pathname.replace(/^\/+/, "") || poolOptions.database;
+// if (process.env.DB_SSL === "true") {
+//     poolOptions.ssl = {
+//         minVersion: "TLSv1.2",
+//         rejectUnauthorized: false
+//     };
+// }
 
-        if (databaseUrl.searchParams.get("ssl") === "true" || databaseUrl.searchParams.get("sslmode") === "require") {
-            poolOptions.ssl = {
-                minVersion: "TLSv1.2",
-                rejectUnauthorized: false
-            };
-        }
-    } catch (error) {
-        console.warn("Invalid DATABASE_URL provided, falling back to individual DB settings.", error.message);
-    }
-}
-
-if (process.env.DB_SSL === "true") {
+if (process.env.DB_SSL !== "false") {
     poolOptions.ssl = {
         minVersion: "TLSv1.2",
         rejectUnauthorized: false
