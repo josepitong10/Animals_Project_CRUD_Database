@@ -5,31 +5,27 @@ import {
     getAnimalById,
     createAnimal,
     updateAnimal,
-    deleteAnimal,
-    getAnimalsByUser
+    deleteAnimal
 } from "../controllers/animalController.js";
 
 const router = express.Router();
 
-// ✅ ALL routes require authentication (private access only)
+// ✅ LAHAT ng routes dito ay kailangan ng authentication
 router.use(authenticateToken);
 
-// GET all animals (only the logged-in user's animals)
+// GET - only the logged-in user's animals
 router.get("/", getAnimals);
 
-// GET animal by ID (only if it belongs to the user)
+// GET by ID - only if it belongs to the user
 router.get("/:id", getAnimalById);
 
-// GET animals by user ID (only if it's the logged-in user)
-router.get("/user/:userId", getAnimalsByUser);
-
-// POST create animal (authenticated user)
+// POST - create animal (automatically assigned to user)
 router.post("/", createAnimal);
 
-// PUT update animal (only if it belongs to the user)
+// PUT - update only if it belongs to the user
 router.put("/:id", updateAnimal);
 
-// DELETE animal (only if it belongs to the user)
+// DELETE - delete only if it belongs to the user
 router.delete("/:id", deleteAnimal);
 
 export default router;
