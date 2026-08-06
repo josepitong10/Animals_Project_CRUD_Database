@@ -5,27 +5,31 @@ import {
     getAnimalById,
     createAnimal,
     updateAnimal,
-    deleteAnimal
+    deleteAnimal,
+    // getAllAnimalsAdmin // Optional for admin
 } from "../controllers/animalController.js";
 
 const router = express.Router();
 
-// ✅ LAHAT ng routes dito ay kailangan ng authentication
+// ✅ LAHAT ng routes ay nangangailangan ng authentication
 router.use(authenticateToken);
 
-// GET - only the logged-in user's animals
+// ✅ GET - Tanging hayop ng logged-in user
 router.get("/", getAnimals);
 
-// GET by ID - only if it belongs to the user
+// ✅ GET by ID - Tanging kung pag-aari ng user
 router.get("/:id", getAnimalById);
 
-// POST - create animal (automatically assigned to user)
+// ✅ POST - Gumawa ng hayop (auto-assign sa user)
 router.post("/", createAnimal);
 
-// PUT - update only if it belongs to the user
+// ✅ PUT - I-update lamang kung pag-aari
 router.put("/:id", updateAnimal);
 
-// DELETE - delete only if it belongs to the user
+// ✅ DELETE - I-delete lamang kung pag-aari
 router.delete("/:id", deleteAnimal);
+
+// Optional: Admin route to see all animals
+// router.get("/admin/all", authenticateToken, getAllAnimalsAdmin);
 
 export default router;

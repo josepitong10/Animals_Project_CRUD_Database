@@ -14,7 +14,7 @@ export default function authenticateToken(req, res, next) {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-        // ✅ IMPORTANT: Kunin ang user ID mula sa token
+        // ✅ SIGURADUHIN na ang user ID ay naka-set ng tama
         req.user = {
             id: parseInt(decoded.id || decoded.sub),
             name: decoded.name,
@@ -24,6 +24,7 @@ export default function authenticateToken(req, res, next) {
         console.log(`✅ Authenticated: ${req.user.name} (ID: ${req.user.id})`);
         next();
     } catch (error) {
+        console.error("❌ Auth error:", error.message);
         return res.status(401).json({
             message: "Invalid or expired token"
         });
