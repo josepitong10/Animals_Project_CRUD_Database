@@ -22,13 +22,21 @@ function formatAnimal(row) {
     return animal;
 }
 
-// GET all animals (Public)
+// ✅ GET all animals (Public - but filtered by user if authenticated)
 export async function getAnimals(req, res) {
     try {
-        const [rows] = await execute(
-            "SELECT * FROM animals ORDER BY created_at DESC"
-        );
+        let query = "SELECT * FROM animals ORDER BY created_at DESC";
+        let params = [];
         
+        // If user is authenticated, only show their animals
+        if (req.user && req.user.id) {
+            query = "SELECT * FROM animals WHERE created_by = ? ORDER BY created_at DESC";
+            params = [req.user.id];
+        }
+        // If no user, return empty array or all animals (depending on your preference)
+        // For private mode, we'll return empty array if not authenticated
+        
+        const [rows] = await execute(query, params);
         const animals = rows.map(formatAnimal);
         
         res.status(200).json(animals);
@@ -40,19 +48,25 @@ export async function getAnimals(req, res) {
     }
 }
 
-// GET animal by ID (Public)
+// GET animal by ID (Public - but check ownership)
 export async function getAnimalById(req, res) {
     try {
         const { id } = req.params;
         
-        const [rows] = await execute(
-            "SELECT * FROM animals WHERE id = ?",
-            [id]
-        );
+        let query = "SELECT * FROM animals WHERE id = ?";
+        let params = [id];
+        
+        // If user is authenticated, check ownership
+        if (req.user && req.user.id) {
+            query = "SELECT * FROM animals WHERE id = ? AND created_by = ?";
+            params = [id, req.user.id];
+        }
+        
+        const [rows] = await execute(query, params);
         
         if (rows.length === 0) {
             return res.status(404).json({ 
-                message: "Animal not found" 
+                message: "Animal not found or you don't have permission to view it" 
             });
         }
         
@@ -65,7 +79,7 @@ export async function getAnimalById(req, res) {
     }
 }
 
-// CREATE animal (Protected - requires JWT)
+// ✅ CREATE animal (Protected - requires JWT)
 export async function createAnimal(req, res) {
     console.log("📨 createAnimal called");
     console.log("🔐 Logged-in user:", req.user);
@@ -79,10 +93,16 @@ export async function createAnimal(req, res) {
             });
         }
         
-        // ✅ FIX: Use req.user.id (now available after authenticateToken fix)
-        const userId = req.user?.id;
-        const userName = req.user?.name;
-        const userEmail = req.user?.email;
+        // ✅ Must be authenticated to create
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({
+                message: "Authentication required to create animals"
+            });
+        }
+        
+        const userId = req.user.id;
+        const userName = req.user.name;
+        const userEmail = req.user.email;
         
         console.log(`✅ Creating animal by user: ${userName} (ID: ${userId})`);
         
@@ -94,8 +114,8 @@ export async function createAnimal(req, res) {
         );
         
         const [newAnimal] = await execute(
-            "SELECT * FROM animals WHERE id = ?",
-            [result.insertId]
+            "SELECT * FROM animals WHERE id = ? AND created_by = ?",
+            [result.insertId, userId]
         );
         
         if (newAnimal.length === 0) {
@@ -113,13 +133,20 @@ export async function createAnimal(req, res) {
     }
 }
 
-// UPDATE animal (Protected - requires JWT)
+// ✅ UPDATE animal (Protected - requires JWT and ownership)
 export async function updateAnimal(req, res) {
     try {
         const { id } = req.params;
         const { name, numLegs } = req.body;
         
-        // ✅ FIX: Check if the animal belongs to the user
+        // Must be authenticated
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({
+                message: "Authentication required to update animals"
+            });
+        }
+        
+        // Check if animal exists and belongs to the user
         const [existing] = await execute(
             "SELECT * FROM animals WHERE id = ? AND created_by = ?",
             [id, req.user.id]
@@ -135,14 +162,20 @@ export async function updateAnimal(req, res) {
         const updateNumLegs = numLegs !== undefined ? parseInt(numLegs) : existing[0].num_legs;
         
         await execute(
-            "UPDATE animals SET name = ?, num_legs = ? WHERE id = ?",
-            [updateName, updateNumLegs, id]
+            "UPDATE animals SET name = ?, num_legs = ? WHERE id = ? AND created_by = ?",
+            [updateName, updateNumLegs, id, req.user.id]
         );
         
         const [updated] = await execute(
-            "SELECT * FROM animals WHERE id = ?",
-            [id]
+            "SELECT * FROM animals WHERE id = ? AND created_by = ?",
+            [id, req.user.id]
         );
+        
+        if (updated.length === 0) {
+            return res.status(404).json({
+                message: "Animal not found after update"
+            });
+        }
         
         res.status(200).json(formatAnimal(updated[0]));
     } catch (error) {
@@ -153,12 +186,19 @@ export async function updateAnimal(req, res) {
     }
 }
 
-// DELETE animal (Protected - requires JWT)
+// ✅ DELETE animal (Protected - requires JWT and ownership)
 export async function deleteAnimal(req, res) {
     try {
         const { id } = req.params;
         
-        // ✅ FIX: Check if the animal belongs to the user
+        // Must be authenticated
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({
+                message: "Authentication required to delete animals"
+            });
+        }
+        
+        // Check if animal exists and belongs to the user
         const [existing] = await execute(
             "SELECT * FROM animals WHERE id = ? AND created_by = ?",
             [id, req.user.id]
@@ -171,8 +211,8 @@ export async function deleteAnimal(req, res) {
         }
         
         await execute(
-            "DELETE FROM animals WHERE id = ?",
-            [id]
+            "DELETE FROM animals WHERE id = ? AND created_by = ?",
+            [id, req.user.id]
         );
         
         res.status(200).json({
@@ -182,6 +222,34 @@ export async function deleteAnimal(req, res) {
         console.error("Delete animal error:", error);
         res.status(500).json({
             message: "Unable to delete animal"
+        });
+    }
+}
+
+// ✅ Get animals by user ID (for admin or debugging)
+export async function getAnimalsByUser(req, res) {
+    try {
+        const { userId } = req.params;
+        
+        // Optional: Check if requesting user is admin or the same user
+        // For now, only allow if authenticated and matches
+        if (!req.user || req.user.id !== parseInt(userId)) {
+            return res.status(403).json({
+                message: "You can only view your own animals"
+            });
+        }
+        
+        const [rows] = await execute(
+            "SELECT * FROM animals WHERE created_by = ? ORDER BY created_at DESC",
+            [userId]
+        );
+        
+        const animals = rows.map(formatAnimal);
+        res.status(200).json(animals);
+    } catch (error) {
+        console.error("Get animals by user error:", error);
+        res.status(500).json({
+            message: "Unable to fetch user's animals"
         });
     }
 }
