@@ -16,16 +16,18 @@ export default function authenticateToken(req, res, next) {
     try {
         const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
         
-        // ✅ FIX: Map the JWT claims to a consistent user object
+        // ✅ Ensure user object has all required fields
         req.user = {
-            id: decodedToken.sub, // 'sub' contains the user ID
+            id: parseInt(decodedToken.id || decodedToken.sub), // Use id or sub
             name: decodedToken.name,
             email: decodedToken.email,
             ...decodedToken // Keep any other fields
         };
         
+        console.log(`✅ Authenticated user: ${req.user.name} (ID: ${req.user.id})`);
         next();
     } catch (error) {
+        console.error("❌ Authentication error:", error.message);
         return res.status(401).json({
             message: "Invalid or expired access token"
         });

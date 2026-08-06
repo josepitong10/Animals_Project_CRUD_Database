@@ -22,47 +22,50 @@ function formatAnimal(row) {
     return animal;
 }
 
-// ✅ GET all animals (Public - but filtered by user if authenticated)
+// ✅ GET all animals - ONLY the logged-in user's animals
 export async function getAnimals(req, res) {
     try {
-        let query = "SELECT * FROM animals ORDER BY created_at DESC";
-        let params = [];
-        
-        // If user is authenticated, only show their animals
-        if (req.user && req.user.id) {
-            query = "SELECT * FROM animals WHERE created_by = ? ORDER BY created_at DESC";
-            params = [req.user.id];
+        // Must be authenticated
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({
+                message: "Authentication required to view animals"
+            });
         }
-        // If no user, return empty array or all animals (depending on your preference)
-        // For private mode, we'll return empty array if not authenticated
+
+        // ✅ Only fetch animals belonging to the logged-in user
+        const [rows] = await execute(
+            "SELECT * FROM animals WHERE created_by = ? ORDER BY created_at DESC",
+            [req.user.id]
+        );
         
-        const [rows] = await execute(query, params);
         const animals = rows.map(formatAnimal);
         
         res.status(200).json(animals);
     } catch (error) {
         console.error("Get animals error:", error);
         res.status(500).json({ 
-            message: "Unable to fetch animals" 
+            message: "Unable to fetch your animals" 
         });
     }
 }
 
-// GET animal by ID (Public - but check ownership)
+// ✅ GET animal by ID - ONLY if it belongs to the user
 export async function getAnimalById(req, res) {
     try {
         const { id } = req.params;
         
-        let query = "SELECT * FROM animals WHERE id = ?";
-        let params = [id];
-        
-        // If user is authenticated, check ownership
-        if (req.user && req.user.id) {
-            query = "SELECT * FROM animals WHERE id = ? AND created_by = ?";
-            params = [id, req.user.id];
+        // Must be authenticated
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({
+                message: "Authentication required"
+            });
         }
         
-        const [rows] = await execute(query, params);
+        // ✅ Check if animal exists AND belongs to the user
+        const [rows] = await execute(
+            "SELECT * FROM animals WHERE id = ? AND created_by = ?",
+            [id, req.user.id]
+        );
         
         if (rows.length === 0) {
             return res.status(404).json({ 
@@ -79,7 +82,7 @@ export async function getAnimalById(req, res) {
     }
 }
 
-// ✅ CREATE animal (Protected - requires JWT)
+// ✅ CREATE animal - Only authenticated users
 export async function createAnimal(req, res) {
     console.log("📨 createAnimal called");
     console.log("🔐 Logged-in user:", req.user);
@@ -113,6 +116,7 @@ export async function createAnimal(req, res) {
             [name.trim(), legs, userId, userName, userEmail]
         );
         
+        // ✅ Get the created animal (verify ownership)
         const [newAnimal] = await execute(
             "SELECT * FROM animals WHERE id = ? AND created_by = ?",
             [result.insertId, userId]
@@ -133,7 +137,7 @@ export async function createAnimal(req, res) {
     }
 }
 
-// ✅ UPDATE animal (Protected - requires JWT and ownership)
+// ✅ UPDATE animal - ONLY if it belongs to the user
 export async function updateAnimal(req, res) {
     try {
         const { id } = req.params;
@@ -146,7 +150,7 @@ export async function updateAnimal(req, res) {
             });
         }
         
-        // Check if animal exists and belongs to the user
+        // ✅ Check if animal exists and belongs to the user
         const [existing] = await execute(
             "SELECT * FROM animals WHERE id = ? AND created_by = ?",
             [id, req.user.id]
@@ -161,11 +165,13 @@ export async function updateAnimal(req, res) {
         const updateName = name || existing[0].name;
         const updateNumLegs = numLegs !== undefined ? parseInt(numLegs) : existing[0].num_legs;
         
+        // ✅ Update only if it belongs to the user
         await execute(
             "UPDATE animals SET name = ?, num_legs = ? WHERE id = ? AND created_by = ?",
             [updateName, updateNumLegs, id, req.user.id]
         );
         
+        // ✅ Get the updated animal (verify ownership)
         const [updated] = await execute(
             "SELECT * FROM animals WHERE id = ? AND created_by = ?",
             [id, req.user.id]
@@ -186,7 +192,7 @@ export async function updateAnimal(req, res) {
     }
 }
 
-// ✅ DELETE animal (Protected - requires JWT and ownership)
+// ✅ DELETE animal - ONLY if it belongs to the user
 export async function deleteAnimal(req, res) {
     try {
         const { id } = req.params;
@@ -198,7 +204,7 @@ export async function deleteAnimal(req, res) {
             });
         }
         
-        // Check if animal exists and belongs to the user
+        // ✅ Check if animal exists and belongs to the user
         const [existing] = await execute(
             "SELECT * FROM animals WHERE id = ? AND created_by = ?",
             [id, req.user.id]
@@ -210,6 +216,7 @@ export async function deleteAnimal(req, res) {
             });
         }
         
+        // ✅ Delete only if it belongs to the user
         await execute(
             "DELETE FROM animals WHERE id = ? AND created_by = ?",
             [id, req.user.id]
@@ -226,14 +233,20 @@ export async function deleteAnimal(req, res) {
     }
 }
 
-// ✅ Get animals by user ID (for admin or debugging)
+// ✅ Get animals by user ID - ONLY if it's the logged-in user
 export async function getAnimalsByUser(req, res) {
     try {
         const { userId } = req.params;
         
-        // Optional: Check if requesting user is admin or the same user
-        // For now, only allow if authenticated and matches
-        if (!req.user || req.user.id !== parseInt(userId)) {
+        // Must be authenticated
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({
+                message: "Authentication required"
+            });
+        }
+        
+        // ✅ Only allow users to view their own animals
+        if (req.user.id !== parseInt(userId)) {
             return res.status(403).json({
                 message: "You can only view your own animals"
             });
@@ -249,7 +262,7 @@ export async function getAnimalsByUser(req, res) {
     } catch (error) {
         console.error("Get animals by user error:", error);
         res.status(500).json({
-            message: "Unable to fetch user's animals"
+            message: "Unable to fetch your animals"
         });
     }
 }

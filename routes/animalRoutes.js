@@ -11,25 +11,25 @@ import {
 
 const router = express.Router();
 
-// ✅ All routes require authentication for private access
+// ✅ ALL routes require authentication (private access only)
 router.use(authenticateToken);
 
-// GET all animals (filtered by user)
+// GET all animals (only the logged-in user's animals)
 router.get("/", getAnimals);
 
-// GET animal by ID (check ownership)
+// GET animal by ID (only if it belongs to the user)
 router.get("/:id", getAnimalById);
 
-// GET animals by user ID (only own)
+// GET animals by user ID (only if it's the logged-in user)
 router.get("/user/:userId", getAnimalsByUser);
 
-// POST create animal
+// POST create animal (authenticated user)
 router.post("/", createAnimal);
 
-// PUT update animal
+// PUT update animal (only if it belongs to the user)
 router.put("/:id", updateAnimal);
 
-// DELETE animal
+// DELETE animal (only if it belongs to the user)
 router.delete("/:id", deleteAnimal);
 
 export default router;
