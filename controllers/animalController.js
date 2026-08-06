@@ -1,7 +1,7 @@
 // Import execute from database (not pool)
 import { execute } from "../config/database.js";
 
-// ADD THIS - formatAnimal function
+// formatAnimal function
 function formatAnimal(row) {
     const animal = {
         id: row.id,
@@ -68,7 +68,7 @@ export async function getAnimalById(req, res) {
 // CREATE animal (Protected - requires JWT)
 export async function createAnimal(req, res) {
     console.log("📨 createAnimal called");
-    console.log("� Logged-in user:", req.user);
+    console.log("🔐 Logged-in user:", req.user);
     
     try {
         const { name, numLegs } = req.body;
@@ -79,7 +79,8 @@ export async function createAnimal(req, res) {
             });
         }
         
-        const userId = req.user?.sub;
+        // ✅ FIX: Use req.user.id (now available after authenticateToken fix)
+        const userId = req.user?.id;
         const userName = req.user?.name;
         const userEmail = req.user?.email;
         
@@ -118,15 +119,15 @@ export async function updateAnimal(req, res) {
         const { id } = req.params;
         const { name, numLegs } = req.body;
         
-        // Check if animal exists
+        // ✅ FIX: Check if the animal belongs to the user
         const [existing] = await execute(
-            "SELECT * FROM animals WHERE id = ?",
-            [id]
+            "SELECT * FROM animals WHERE id = ? AND created_by = ?",
+            [id, req.user.id]
         );
         
         if (existing.length === 0) {
             return res.status(404).json({
-                message: "Animal not found"
+                message: "Animal not found or you don't have permission to update it"
             });
         }
         
@@ -157,14 +158,15 @@ export async function deleteAnimal(req, res) {
     try {
         const { id } = req.params;
         
+        // ✅ FIX: Check if the animal belongs to the user
         const [existing] = await execute(
-            "SELECT * FROM animals WHERE id = ?",
-            [id]
+            "SELECT * FROM animals WHERE id = ? AND created_by = ?",
+            [id, req.user.id]
         );
         
         if (existing.length === 0) {
             return res.status(404).json({
-                message: "Animal not found"
+                message: "Animal not found or you don't have permission to delete it"
             });
         }
         

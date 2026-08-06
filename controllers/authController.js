@@ -31,7 +31,7 @@ export async function register(req, res) {
 
         const existingUser = await User.findByEmail(normalizedEmail);
         if (existingUser) {
-            return res.status(400).json({
+            return res.status(409).json({ // ✅ Changed to 409 Conflict
                 message: "Email is already registered"
             });
         }
@@ -46,14 +46,18 @@ export async function register(req, res) {
 
         return res.status(201).json({
             message: "User registered successfully",
-            user
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email
+            }
         });
 
     } catch (error) {
         console.error("Register error:", error);
         
         if (error.code === "ER_DUP_ENTRY") {
-            return res.status(400).json({
+            return res.status(409).json({
                 message: "Email is already registered"
             });
         }
@@ -91,21 +95,28 @@ export async function login(req, res) {
             });
         }
 
+        // ✅ FIX: Include user ID in the JWT payload
         const accessToken = jwt.sign(
             { 
+                id: user.id,        // ✅ Include ID in payload
                 name: user.name, 
                 email: user.email 
             },
             process.env.JWT_SECRET,
             { 
-                subject: String(user.id),
-                expiresIn: process.env.JWT_EXPIRES_IN || "1h"
+                subject: String(user.id), // Also keep as subject
+                expiresIn: process.env.JWT_EXPIRES_IN || "24h" // Changed to 24h
             }
         );
 
         return res.status(200).json({
             message: "Login successful",
-            accessToken
+            accessToken,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email
+            }
         });
 
     } catch (error) {
